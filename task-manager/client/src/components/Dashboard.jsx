@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { useNavigate } from 'react-router-dom';
+import useDebounce from '../hooks/useDebounce'; 
+
 import TaskForm from './TaskForm';
 import FilterBar from './FilterBar';
 import TaskItem from './TaskItem';
@@ -9,43 +11,39 @@ const API_URL = 'http://localhost:5000/tasks';
 
 function Dashboard() {
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState([]);
+  
+  // --- Master Data State ---
+  // 'tasks' will now hold ALL tasks that match the server filters (Status/Priority)
+  const [tasks, setTasks] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // --- Filtering & Search State ---
-  const [filter, setFilter] = useState('all');          // Status: all, completed, pending
-  const [priorityFilter, setPriorityFilter] = useState('All'); // Priority: All, High, Medium, Low
-  const [searchText, setSearchText] = useState('');     // Immediate input text
-  const [debouncedSearch, setDebouncedSearch] = useState(''); // Text used for API calls
+  // --- Filter & Search States ---
+  const [filter, setFilter] = useState('all');          // Server-side filter
+  const [priorityFilter, setPriorityFilter] = useState('All'); // Server-side filter
+  const [searchText, setSearchText] = useState('');     // Client-side input
+  
+  // 1. Debounce the input (300ms is usually snappy enough for local search)
+  const debouncedSearch = useDebounce(searchText, 300);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('authToken'); // Clear session
-    navigate('/'); // Redirect to Login
+    sessionStorage.removeItem('authToken');
+    navigate('/');
   };
 
-  // --- 1. Debouncing Logic ---
-  // Wait for the user to stop typing for 500ms before updating 'debouncedSearch'
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchText);
-    }, 500); // 500ms delay
-
-    return () => clearTimeout(timer); // Cleanup (cancel previous timer if typing continues)
-  }, [searchText]);
-
-  // --- 2. Fetch Tasks (Triggers on any filter change) ---
+  // --- 2. Fetch API Data (Server Side Filtering) ---
+  // NOTE: We removed 'debouncedSearch' from dependencies.
+  // We only fetch when the broad categories (Status/Priority) change.
   useEffect(() => {
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        // Construct Query URL
-        // Example: /tasks?filter=pending&priority=High&search=meeting
         const params = new URLSearchParams();
         if (filter !== 'all') params.append('filter', filter);
         if (priorityFilter !== 'All') params.append('priority', priorityFilter);
-        if (debouncedSearch) params.append('search', debouncedSearch);
-
+        
+        // We do NOT append 'search' here anymore. We fetch the list, then search locally.
+        
         const response = await fetch(`${API_URL}?${params.toString()}`);
         if (!response.ok) throw new Error('Failed to fetch tasks');
         
@@ -53,17 +51,34 @@ function Dashboard() {
         setTasks(data);
         setError(null);
       } catch (err) {
-        setError('Error connecting to server.');
         console.error(err);
+        setError('Error connecting to server.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchTasks();
-  }, [filter, priorityFilter, debouncedSearch]); // Runs when any of these change
+  }, [filter, priorityFilter]); // <--- Only re-fetch if these change
 
-  // --- CRUD Operations (Same as before) ---
+  // --- 3. Elastic-Style Local Filtering ---
+  // We derive 'displayedTasks' from 'tasks' using the debounced search term.
+  // useMemo ensures we don't re-calculate this unless tasks or search changes.
+  const displayedTasks = useMemo(() => {
+    if (!debouncedSearch) return tasks;
+
+    const lowerQuery = debouncedSearch.toLowerCase();
+
+    return tasks.filter((task) => {
+      // Partial substring matching & Case-insensitive
+      const matchTitle = task.title.toLowerCase().includes(lowerQuery);
+      const matchDesc = task.description && task.description.toLowerCase().includes(lowerQuery);
+      
+      return matchTitle || matchDesc;
+    });
+  }, [tasks, debouncedSearch]);
+
+
+  // --- CRUD Operations (Unchanged) ---
   const addTask = async (taskData) => {
     try {
       const response = await fetch(API_URL, {
@@ -97,32 +112,22 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-100 py-10 px-4">
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
-        
-        <header className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-gray-800">Task Manager</h1>
-          <p className="text-gray-500 text-sm">Organize your day efficiently</p>
-          <button 
-            onClick={handleLogout}
-            className="text-sm text-red-500 hover:underline font-semibold"
-          >
-            Logout
-          </button>
+        <header className="mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Task Manager</h1>
+            <p className="text-gray-500 text-sm">Organize your day efficiently</p>
+          </div>
+          <button onClick={handleLogout} className="text-sm text-red-500 hover:underline font-semibold">Logout</button>
         </header>
 
         <TaskForm onAdd={addTask} />
-        
         <div className="border-t border-gray-100 my-6"></div>
-
-        {/* New Search Bar */}
+        
+        {/* Search Input */}
         <SearchBar value={searchText} onChange={setSearchText} />
-
-        {/* Updated Filter Bar */}
-        <FilterBar 
-          filter={filter} 
-          setFilter={setFilter} 
-          priorityFilter={priorityFilter}
-          setPriorityFilter={setPriorityFilter}
-        />
+        
+        {/* Filters */}
+        <FilterBar filter={filter} setFilter={setFilter} priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter} />
 
         {error && <div className="text-red-500 text-center mb-4">{error}</div>}
 
@@ -130,15 +135,15 @@ function Dashboard() {
           <p className="text-center text-gray-400">Loading tasks...</p>
         ) : (
           <div className="space-y-2">
-            {tasks.length === 0 ? (
+            {/* RENDER THE LOCALLY FILTERED LIST */}
+            {displayedTasks.length === 0 ? (
               <p className="text-center text-gray-400 italic mt-8">
-                {searchText ? "No matching tasks found." : "No tasks found."}
+                 {searchText ? "No matching tasks found." : "No tasks found."}
               </p>
             ) : (
-              tasks.map((task) => (
+              displayedTasks.map((task) => (
                 <TaskItem
-                  key={task.id}
-                  task={task}
+                  key={task.id} task={task}
                   onToggle={(id, status) => updateTask(id, { completed: status })}
                   onEdit={(id, data) => updateTask(id, data)}
                   onDelete={deleteTask}
