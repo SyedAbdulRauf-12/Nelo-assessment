@@ -20,13 +20,32 @@ let tasks = [
     }
 ];
 
-// 1. GET /tasks : Displays all the tasks
+// GET /tasks : Displays all tasks
 app.get('/tasks', (req, res) => {
-    const { filter } = req.query;
-    let result = tasks;
+    const { filter, priority, search } = req.query;
     
-    if (filter === 'completed') result = tasks.filter(t => t.completed);
-    else if (filter === 'pending') result = tasks.filter(t => !t.completed);
+    let result = tasks;
+
+    // A. Filter by Status (Completed/Pending)
+    if (filter === 'completed') {
+        result = result.filter(t => t.completed);
+    } else if (filter === 'pending') {
+        result = result.filter(t => !t.completed);
+    }
+
+    // B. Filter by Priority
+    if (priority && priority !== 'All') {
+        result = result.filter(t => t.priority === priority);
+    }
+
+    // C. Search (Case-insensitive) - Checks Title OR Description
+    if (search) {
+        const lowerSearch = search.toLowerCase();
+        result = result.filter(t => 
+            t.title.toLowerCase().includes(lowerSearch) || 
+            (t.description && t.description.toLowerCase().includes(lowerSearch))
+        );
+    }
 
     res.json(result);
 });
