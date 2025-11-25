@@ -8,17 +8,19 @@ app.use(cors());
 app.use(express.json());
 
 // --- Database ---
+//Not using any databse, hence In-Memory Databse
 let tasks = [
     { 
         id: 1, 
-        title: "Learn React Hooks", 
-        description: "Understand useState and useEffect deeply.", 
+        title: "Finish Nelo Assessment", 
+        description: "Complete this Task manager webApp", 
         priority: "High", 
         dueDate: "2025-10-25", 
         completed: true 
     }
 ];
 
+//Display the tasks based on filter
 app.get('/tasks', (req, res) => {
     const { filter, priority, search } = req.query;
     let result = tasks;
@@ -38,6 +40,7 @@ app.get('/tasks', (req, res) => {
     res.json(result);
 });
 
+//Adding new tasks to task-list
 app.post('/tasks', (req, res) => {
     const { title, description, priority, dueDate } = req.body;
     if (!title) return res.status(400).json({ error: "Title is required" });
@@ -55,6 +58,7 @@ app.post('/tasks', (req, res) => {
     res.status(201).json(newTask);
 });
 
+//Editing existing tasks
 app.put('/tasks/:id', (req, res) => {
     const { id } = req.params;
     const { title, description, priority, dueDate, completed } = req.body;
@@ -70,19 +74,21 @@ app.put('/tasks/:id', (req, res) => {
     res.json(tasks[taskIndex]);
 });
 
+//Deleting tasks
 app.delete('/tasks/:id', (req, res) => {
     const { id } = req.params;
     tasks = tasks.filter(t => t.id != id);
     res.json({ message: "Task deleted successfully" });
 });
 
-const TWENTY_MINUTES = 10000; // 20 mins * 60 sec * 1000 ms
+//Task mail automation
+const Time = 10000; //kept for 10sec or 10,000 ms for quick update in demo
 
 // Function to run periodically
 function sendTaskReminders() {
     console.log(`\n[${new Date().toLocaleTimeString()}] ⏳ Checking for pending tasks...`);
     
-    // 1. Find pending tasks
+    // Find pending tasks
     const pendingTasks = tasks.filter(t => !t.completed);
 
     if (pendingTasks.length === 0) {
@@ -90,11 +96,11 @@ function sendTaskReminders() {
         return;
     }
 
-    // 2. Simulate sending emails
+    // Simulating to send emails
     console.log(`   📨 Found ${pendingTasks.length} pending tasks. Sending reminders...`);
     
     pendingTasks.forEach(task => {
-        // Mock Email Logic
+        // Mock Email is logged onto server console
         console.log(`      ---------------------------------------------------`);
         console.log(`      To:      admin@nelo.com`);
         console.log(`      Subject: 🔔 Reminder: ${task.title}`);
@@ -104,14 +110,11 @@ function sendTaskReminders() {
 }
 
 // Start the timer
-setInterval(sendTaskReminders, TWENTY_MINUTES);
-
-// Optional: Run it immediately on startup so you don't have to wait 20 mins to see it work
+setInterval(sendTaskReminders, Time);
 console.log("📧 Mail Automation Service Started...");
-//sendTaskReminders(); // <--- Uncomment this if you want to test it instantly on restart
 
-// ==========================================
 
+//Server start
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

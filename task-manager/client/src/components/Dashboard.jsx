@@ -1,7 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'; // Added useMemo
+import { useState, useEffect, useMemo } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import useDebounce from '../hooks/useDebounce'; 
-
 import TaskForm from './TaskForm';
 import FilterBar from './FilterBar';
 import TaskItem from './TaskItem';
@@ -13,7 +12,7 @@ function Dashboard() {
   const navigate = useNavigate();
   
   // --- Master Data State ---
-  // 'tasks' will now hold ALL tasks that match the server filters (Status/Priority)
+  // 'tasks' hold ALL tasks that match the server filters (Status/Priority)
   const [tasks, setTasks] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,7 +22,7 @@ function Dashboard() {
   const [priorityFilter, setPriorityFilter] = useState('All'); // Server-side filter
   const [searchText, setSearchText] = useState('');     // Client-side input
   
-  // 1. Debounce the input (300ms is usually snappy enough for local search)
+  // 1. Debounce the input (300ms)
   const debouncedSearch = useDebounce(searchText, 300);
 
   const handleLogout = () => {
@@ -32,7 +31,6 @@ function Dashboard() {
   };
 
   // --- 2. Fetch API Data (Server Side Filtering) ---
-  // NOTE: We removed 'debouncedSearch' from dependencies.
   // We only fetch when the broad categories (Status/Priority) change.
   useEffect(() => {
     const fetchTasks = async () => {
@@ -42,7 +40,7 @@ function Dashboard() {
         if (filter !== 'all') params.append('filter', filter);
         if (priorityFilter !== 'All') params.append('priority', priorityFilter);
         
-        // We do NOT append 'search' here anymore. We fetch the list, then search locally.
+        // We fetch the list, then search locally.
         
         const response = await fetch(`${API_URL}?${params.toString()}`);
         if (!response.ok) throw new Error('Failed to fetch tasks');
@@ -78,7 +76,7 @@ function Dashboard() {
   }, [tasks, debouncedSearch]);
 
 
-  // --- CRUD Operations (Unchanged) ---
+  // --- CRUD Operations ---
   const addTask = async (taskData) => {
     try {
       const response = await fetch(API_URL, {

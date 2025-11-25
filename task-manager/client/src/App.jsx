@@ -18,10 +18,10 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Route: Login */}
+        {/* Public Route: Login i.e Anyone can visit this*/}
         <Route path="/" element={<LoginPage />} />
         
-        {/* Protected Route: Dashboard */}
+        {/* Protected Route: Dashboard, Accessible only after entering credentials */}
         <Route 
           path="/dashboard" 
           element={

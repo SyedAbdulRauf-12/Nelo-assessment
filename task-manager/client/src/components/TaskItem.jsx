@@ -53,7 +53,7 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
     );
   }
 
-  // --- NORMAL VIEW (With Delete Confirmation) ---
+  // --- NORMAL VIEW With Delete Confirmation ---
   return (
     <div className={`p-4 mb-3 rounded-lg shadow-sm border transition-all duration-200 
       ${showDeleteConfirm 

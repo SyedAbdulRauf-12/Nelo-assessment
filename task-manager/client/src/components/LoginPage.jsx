@@ -11,11 +11,11 @@ function LoginPage() {
     e.preventDefault();
     
     // --- Simple Hardcoded Auth ---
-    // In a real app, you would send a POST request to your backend here
+    // In a real app, we would send a POST request to your backend here
     if (email === 'admin@dummy.com' && password === '123456') {
-      // 1. Save session
+      // 1. Save session with sample token
       sessionStorage.setItem('authToken', 'sample-token-123');
-      // 2. Redirect to Dashboard
+      // 2. Redirect to Dashboard to show tasks
       navigate('/dashboard');
     } else {
       setError('Invalid email or password');
